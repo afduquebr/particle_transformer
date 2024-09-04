@@ -58,7 +58,7 @@ def pdg_onehot(x, num_classes=14, mask=None):
 
 def get_model(data_config, **kwargs):
     device = torch.device('cuda')
-    cfg = dict(num_channels_scalar = 35,
+    cfg = dict(num_channels_scalar = 0,
                	num_channels_m = [[60],]*5,
 		num_channels_2to2 = [35,]*5,
 		num_channels_out = [60],
@@ -66,9 +66,11 @@ def get_model(data_config, **kwargs):
                 device=device, dtype=None,
 		activation='leakyrelu',
                 add_beams=True,
+                factorize=True,
                 read_pid=False,
                 batchnorm='b',
                 average_nobj=51.83,#CHECK THIS
+                config='M', config_out='M',
 #num_classes=2,activate_agg_in=False, activate_lin_in=True,activate_agg=False, activate_lin=True, activation='leakyrelu', add_beams=True, read_pid=False, config='s', config_out='s', average_nobj=49, factorize=False, masked=True,
                  #activate_agg_out=True, activate_lin_out=False, mlp_out=True,scale=1, irc_safe=False, dropout = False, drop_rate=0.1, drop_rate_out=0.1, batchnorm=None,
                  #weaver misc
