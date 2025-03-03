@@ -20,10 +20,9 @@ if ! conda activate "$conda_env"; then
 fi
 
 # Move to the working directory
-cd /pbs/home/a/aduque/private/particle_transformer/ || exit
+cd /pbs/home/a/aduque/private/particle_transformer/H5_PREPARATION/ || exit
 
 # Run the Python script
-# if ! python num_sample.py; then
 # if ! python balance_sample.py; then
 # if ! python to_hdf5.py; then
 if ! python resample.py; then
