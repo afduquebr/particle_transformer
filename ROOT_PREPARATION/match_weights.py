@@ -6,133 +6,81 @@ import os
 import hep_ml.reweight as reweight
 
 def match_weights(pt, target, n_bins=200):
-    """ match_weights - This function will use the hepml reweight function
-    to calculate weights which match the pt distribution to the target
-    distribution. Usually used to match the bkg pt distribution to the
-    signal.
-
-    Arguments:
-    pt (array) - Distribution to calculate weights for
-    target (array) - Distribution to match
-    n_bins (int)
-
-    Returns:
-    (array) - vector of weights for pt
-    """
-
-    # Fit reweighter to target distribution
+    """ Calculate weights to match pt distribution to the target distribution. """
     reweighter = reweight.BinsReweighter(n_bins=n_bins)
     reweighter.fit(pt, target=target)
-
-    # Predict new weights
     weights = reweighter.predict_weights(pt)
-    weights /= weights.mean()
+    return weights / weights.mean()  # Normalize weights
 
-    return weights
-
-def shuffle_and_merge(file_dir,tree,sig_tag,bkg_tag):
-    #Get Signal File List
-    sig_file_names = glob.glob(file_dir+sig_tag+"*")
-    bkg_file_names = []
-    test_file = None
-    train_file = None
-    #For each signal file, get the bkg file
-    for sig_f in sig_file_names:
-        #replace sig tag with bkg tag and check file exists
-        bkg_f = glob.glob(sig_f.replace(sig_tag,bkg_tag))
-        if len(bkg_f) != 1: raise Exception("bkg and sig must have matching file numbers")
-        else: bkg_file_names.append(bkg_f[0])
-
-    #For each file, get the jet_pt, match the weights and write the file
-    for sig_f,bkg_f in zip(sig_file_names,bkg_file_names):
-        print("Combining ",bkg_f,"and",sig_f+"...",end="",flush=True)
-
-        #Combine into single root file
-        array = uproot.concatenate({sig_f:tree,bkg_f:tree})
-        indices = np.arange(len(array))
-        
-        #Shuffle sig and bkg
-        seed=0
-        rng = np.random.default_rng(seed)
-        rng.shuffle(indices, axis=0)
-                 
-        #Open output files on first iteration
-        if test_file == None:
-            branches = {}
-            for column in array.fields:
-                # can only write out 2D awkward arrays annoyingly
-                if not array[column].ndim > 2:
-                    branches[column] = ak.type(array[column]) #get types for each field
-            
-            #open temporary files
-            test_file = uproot.recreate("test.part.root")
-            test_file.mktree("tree", branches)
-            train_file = uproot.recreate("train.part.root")
-            train_file.mktree("tree", branches)
-        
-        #Save to file
-        if "test" in sig_f:
-            test_file["tree"].extend(array[indices])
-        else:
-            train_file["tree"].extend(array[indices])
-        
-        print("Completed!")
-    train_file.close()
-    test_file.close()
+def process_files(file_dir, tree, sig_tag, bkg_tag, filename, step_size=256, labelname="label_sig"):
+    out_dir = "/sps/atlas/a/aduque/particle_transformer/PFN/data_train_no_sig"
     
-def open_sig_and_bkg(file_dir,tree, sig_tag, bkg_tag,step_size=256):
-       
-    #Shuffle sig/bkg and merge files            
-    shuffle_and_merge(file_dir,tree, sig_tag, bkg_tag)
+    # Get corresponding signal and background files
+    sig_files = glob.glob(file_dir + sig_tag + "*")
+    bkg_files = [sig_f.replace(sig_tag, bkg_tag) for sig_f in sig_files if glob.glob(sig_f.replace(sig_tag, bkg_tag))]
+
+    # Process training data
+    print("Processing training files to compute reweighting...")
+    sig_pt = []
+    bkg_pt = []
     
-    print("TEMPORARY TEST/TRAIN FILES CREATED. LOOPING THROUGH TRAIN TO MATCH BKG WEIGHTS TO SIG.")
-    #ONLY NEED TO REWEIGHT TRAIN FILE
-    with uproot.open("train.part.root"+":"+tree) as sig:
-        pt = sig["jet_pt"].array()
-        labels = sig["label_sig"].array()
-        
-        bkg_weight=match_weights(pt[labels==0],pt[labels==1]) #use sig pt to reweight bkg
-            
-    #Iterate through bkg file, set weight and write
-    out_file = None
+    for sig_f, bkg_f in zip(sig_files, bkg_files):
+        with uproot.open(f"{sig_f}:{tree}") as sig, uproot.open(f"{bkg_f}:{tree}") as bkg:
+            sig_pt.append(sig["jet_pt"].array())
+            bkg_pt.append(bkg["jet_pt"].array())
+
+    sig_pt = ak.flatten(ak.Array(sig_pt))
+    bkg_pt = ak.flatten(ak.Array(bkg_pt))
+    
+    bkg_weights = match_weights(bkg_pt, sig_pt)
+
+    # Save reweighted background
+    print("Reweighting and saving background files...")
+    out_file = uproot.recreate(f"{out_dir}/train_{filename}.root")
+    
     count = 0
-    for array in uproot.iterate("train.part.root"+":"+tree, step_size=step_size):
-        
-        #Open output file on first iteration
-        if count == 0:
-            branches = {}
-            for column in array.fields:
-                # can only write out 2D awkward arrays annoyingly
-                if not array[column].ndim > 2:
-                    branches[column] = ak.type(array[column]) #get types for each field
+    for bkg_f in bkg_files:
+        for array in uproot.iterate(f"{bkg_f}:{tree}", step_size=step_size):
+            if count == 0:
+                branches = {col: ak.type(array[col]) for col in array.fields if array[col].ndim <= 2}
+                out_file.mktree("tree", branches)
             
-            out_file = uproot.recreate("train.root")
-            out_file.mktree("tree", branches)
-        
-        #Set weight
-        n_bkg = len(array["weight"][array["label_sig"]==0]) #How many bkg are in this chunk
-        indeces = np.arange(0, len(array["weight"]), 1)
-        bkg_ind = indeces[array["label_sig"] == 0]
-        weights = np.ones(len(array["weight"]), dtype=np.float32)
-        if count+n_bkg<len(bkg_weight):
-            weights[bkg_ind] = bkg_weight[count:count+n_bkg]
-            #array = ak.where(array["label_sig"]==0, bkg_weight[count:count+n_bkg], array["weight"])
-            array["weight"] = weights
-            count+=n_bkg
-        else:
-            weights[bkg_ind] = bkg_weight[count:]
-            #array = ak.where(array["label_sig"]==0, bkg_weight[count:], array["weight"])
-            array["weight"] = weights
-        
-        #Writes to file
-        out_file["tree"].extend(array)
-    out_file.close()
-    
-    print("Training file reweighted. Replacing temporary files.")
-    
-    os.remove("train.part.root")
-    os.replace("test.part.root","test.root")
-    
-    print("\nCOMPLETED!")
+            n_bkg = len(array["weight"])
+            weight_slice = bkg_weights[count : count + n_bkg]
+            array["weight"] = weight_slice
+            out_file["tree"].extend(array)
+            count += n_bkg
 
-open_sig_and_bkg("data_out/","tree","sig","bkg",step_size=256)    
+    out_file.close()
+    print("Completed reweighted background file.")
+
+    # # **Merge all signal files into one**
+    # print("Merging all signal files into a unified train_sig file...")
+    # out_sig_file = uproot.recreate(f"{out_dir}/train_sig_{filename}.root")
+    
+    # count = 0
+    # for sig_f in sig_files:
+    #     for array in uproot.iterate(f"{sig_f}:{tree}", step_size=step_size):
+    #         if count == 0:
+    #             branches = {col: ak.type(array[col]) for col in array.fields if array[col].ndim <= 2}
+    #             out_sig_file.mktree("tree", branches)
+            
+    #         out_sig_file["tree"].extend(array)
+    #         count += len(array["weight"])
+
+    # out_sig_file.close()
+    # print("Completed unified signal file.")
+
+    print("Done!")
+
+input_dir = "/sps/atlas/a/aduque/particle_transformer/PFN/data_out/"
+process_files(input_dir, "tree", "H", "qcd", step_size=256, filename="qcd", labelname="label_QCD")    
+process_files(input_dir, "tree", "H", "top", step_size=256, filename="top", labelname="label_top")    
+process_files(input_dir, "tree", "H", "WZ", step_size=256, filename="WZ", labelname="label_WZ")    
+
+
+# input_dir = "/sps/atlas/a/aduque/particle_transformer/PFN/data_out5/"
+# process_files(input_dir, "tree", "H", "qcd", step_size=256, filename="qcd", labelname="label_QCD")    
+# process_files(input_dir, "tree", "H", "top", step_size=256, filename="top", labelname="label_top")    
+# process_files(input_dir, "tree", "H", "W", step_size=256, filename="W", labelname="label_W")    
+# process_files(input_dir, "tree", "H", "Z", step_size=256, filename="Z", labelname="label_Z")    
