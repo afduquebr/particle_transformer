@@ -1,14 +1,17 @@
 import tables
 import numpy as np
 
+# Path
+path = "/sps/atlas/a/aduque/particle_transformer/PFN/data_train5"
+
 # File paths
-file_path = "/sps/atlas/a/aduque/particle_transformer/PFN/data_train5/train_5M_prov.h5"
-output_file = "/sps/atlas/a/aduque/particle_transformer/PFN/data_train5/train_5M.h5"
+file_path = f"{path}/train_25M_prov.h5"
+output_file = f"{path}/train_5M_prov.h5"
 
 # Define labels and chunk size
 # labels = ['label_QCD', 'label_WZ', 'label_top', 'label_higgs']
 labels = ['label_QCD', 'label_W', 'label_Z', 'label_top', 'label_higgs']
-chunk_size = 1000  # Adjust based on available memory
+chunk_size = 1000000  # Adjust based on available memory
 
 print("Opening source HDF5 file: ", file_path)
 file = tables.open_file(file_path, mode="r")
@@ -69,12 +72,3 @@ print(f"Created sampled file with {num_samples} entries per class at {output_fil
 print("Closing source HDF5 file...")
 file.close()
 print("Process completed successfully!")
-
-
-# Create a new HDF5 file for sampled data
-# outfile = h5py.File(output_file, "w")
-# for key in file.root._v_children:
-#     data = file.root[key][:][random_indices]
-#     outfile.create_dataset(key, data=data)
-
-# print(f"Created sampled file with {num_samples} entries per class at {output_file}")
