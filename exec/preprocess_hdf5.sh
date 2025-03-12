@@ -1,13 +1,13 @@
 #!/bin/bash
-#SBATCH -o ./output/resample.%j.txt   # Standard output file (%j = Job ID)
-#SBATCH -e ./error/resample.%j.txt    # Standard error file (%j = Job ID)
-#SBATCH --mem=128G                    # Memory allocation
-#SBATCH --time=96:00:00               # Walltime (48 hours)
-#SBATCH --ntasks=1                    # Number of tasks (typically 1 for a Python script)
-#SBATCH --cpus-per-task=2             # CPUs per task (adjust as needed)
-#SBATCH --job-name=resample           # Job name
-#SBATCH --partition=htc               # Partition name (check available partitions)
-#SBATCH --account=atlas               # Explicitly specify account
+#SBATCH -o ./output/balance.%j.txt     # Standard output file (%j = Job ID)
+#SBATCH -e ./error/balance.%j.txt      # Standard error file (%j = Job ID)
+#SBATCH --mem=128G                      # Memory allocation
+#SBATCH --time=96:00:00                 # Walltime (48 hours)
+#SBATCH --ntasks=2                      # Number of tasks (typically 1 for a Python script)
+#SBATCH --cpus-per-task=2               # CPUs per task (adjust as needed)
+#SBATCH --job-name=balance             # Job name
+#SBATCH --partition=htc                 # Partition name (check available partitions)
+#SBATCH --account=atlas                 # Explicitly specify account
 
 # Load Conda environment
 module add conda
@@ -23,9 +23,10 @@ fi
 cd /pbs/home/a/aduque/private/particle_transformer/H5_PREPARATION/ || exit
 
 # Run the Python script
-# if ! python balance_sample.py; then
 # if ! python to_hdf5.py; then
-if ! python resample.py; then
+# if ! python resample.py; then
+# if ! python reduce_sample.py; then
+if ! python balance_sample.py; then
     echo "Error: Failed to run Python script."
     exit 1
 fi

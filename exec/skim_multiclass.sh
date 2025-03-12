@@ -18,8 +18,8 @@ fi
 cd /AtlasDisk/home2/duquebran/particle_transformer/ROOT_PREPARATION/ || exit
 
 # Run Training Python script
-if ! python run_skim_multiclass.py; then
 # if ! python run_skim_5.py; then
+if ! python run_skim_multiclass.py; then
     echo "Error: Failed to run Python script."
     exit 1
 fi
