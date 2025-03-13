@@ -44,6 +44,15 @@ def define_jet_level_quantities(dset, data=None):
     data['R10TruthLabel_R22v1'] = np.array([i[38] for i in dset[:]])
     return data
 
+def define_subjet_level_quantities(dset, data=None):
+    if data is None:
+        data = ak.zip({'subjet_DL1r_pb':np.array([i[5] for i in dset[:]])})
+    else:
+        data['subjet_DL1r_pb'] = np.array([i[5] for i in dset[:]]) 
+    data['subjet_DL1r_pc'] = np.array([i[6] for i in dset[:]])
+    data['subjet_DL1r_pu'] = np.array([i[7] for i in dset[:]])
+    return data
+
 def split_input_files(config):
     max_jets = config["max_jets"]
     num_outputs = config["num_outputs"]
@@ -112,10 +121,16 @@ def skim(in_file_name, out_file_names, signal, branches_to_keep, max_constits=80
 
         input_data["fjet_clus_E"] = h5_data[:]["flow_energy"]
         input_data["fjet_clus_pt"] = h5_data[:]["flow_pt"]
-        input_data["fjet_clus_phi"]=h5_data[:]["flow_phi"]
-        input_data["fjet_clus_eta"]=h5_data[:]["flow_eta"]
-        input_data["fjet_clus_deltaphi"]=h5_data[:]["flow_dphi"]
-        input_data["fjet_clus_deltaeta"]=h5_data[:]["flow_deta"]
+        input_data["fjet_clus_phi"] = h5_data[:]["flow_phi"]
+        input_data["fjet_clus_eta"] = h5_data[:]["flow_eta"]
+        input_data["fjet_clus_deltaphi"] = h5_data[:]["flow_dphi"]
+        input_data["fjet_clus_deltaeta"] = h5_data[:]["flow_deta"]
+        # New Variables
+        input_data["fjet_clus_d0"] = h5_data[:]["d0"]
+        input_data["fjet_clus_d0_uncertainty"] = h5_data[:]["d0Uncertainty"]
+        input_data["fjet_clus_z0"] = h5_data[:]["z0SinTheta"] / np.sin(h5_data[:]["theta"]) 
+        input_data["fjet_clus_z0_uncertainty"] = h5_data[:]["z0SinThetaUncertainty"] / np.sin(h5_data[:]["theta"]) - (h5_data[:]["z0SinTheta"] * np.cos(h5_data[:]["theta"]) * h5_data[:]["thetaUncertainty"]) / np.square(np.sin(h5_data[:]["theta"]))
+        # End of Variables
         input_data["valid"] = h5_data[:]["valid"]
         
         #Define other training quantities
@@ -136,6 +151,8 @@ def skim(in_file_name, out_file_names, signal, branches_to_keep, max_constits=80
         
         #Preprocess and selection cuts
         input_data = define_jet_level_quantities(dset["jets"][chunk[0]], data=input_data)   
+        # Subjet Variables 
+        input_data = define_subjet_level_quantities(dset["subjets"][chunk[0]], data=input_data)   
         input_data = preprocess(input_data,branches_to_keep)
         input_data = selection_cuts(input_data,signal,R22TruthLabelValues=R22TruthLabelValues) #CUTTING AWAY EVENTS MAY CAUSE PROBLEMS IF MAX_JETS IS TOO HIGH
         #ADD EVENTS UNTIL MAX_JETS PASSED

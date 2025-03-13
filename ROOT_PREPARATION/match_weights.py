@@ -54,22 +54,22 @@ def process_files(file_dir, tree, sig_tag, bkg_tag, filename, step_size=256, lab
     out_file.close()
     print("Completed reweighted background file.")
 
-    # # **Merge all signal files into one**
-    # print("Merging all signal files into a unified train_sig file...")
-    # out_sig_file = uproot.recreate(f"{out_dir}/train_sig_{filename}.root")
+    # **Merge all signal files into one**
+    print("Merging all signal files into a unified train_sig file...")
+    out_sig_file = uproot.recreate(f"{out_dir}/train_sig_{filename}.root")
     
-    # count = 0
-    # for sig_f in sig_files:
-    #     for array in uproot.iterate(f"{sig_f}:{tree}", step_size=step_size):
-    #         if count == 0:
-    #             branches = {col: ak.type(array[col]) for col in array.fields if array[col].ndim <= 2}
-    #             out_sig_file.mktree("tree", branches)
+    count = 0
+    for sig_f in sig_files:
+        for array in uproot.iterate(f"{sig_f}:{tree}", step_size=step_size):
+            if count == 0:
+                branches = {col: ak.type(array[col]) for col in array.fields if array[col].ndim <= 2}
+                out_sig_file.mktree("tree", branches)
             
-    #         out_sig_file["tree"].extend(array)
-    #         count += len(array["weight"])
+            out_sig_file["tree"].extend(array)
+            count += len(array["weight"])
 
-    # out_sig_file.close()
-    # print("Completed unified signal file.")
+    out_sig_file.close()
+    print("Completed unified signal file.")
 
     print("Done!")
 

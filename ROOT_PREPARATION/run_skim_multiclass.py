@@ -7,7 +7,7 @@ config_WZ={
     "pickle_dict_file":"/AtlasDisk/home2/duquebran/particle_transformer/ROOT_PREPARATION/metadata/jet_count_dict_MULTICLASS.pickle",
 
     "max_constits" : 80,
-    "max_jets" : int(45e6),
+    "max_jets" : int(5e6),
     "num_outputs" : 50,
     "num_test" : 5, #num_train = num_outputs-num_test
     
@@ -16,7 +16,10 @@ config_WZ={
     "labels":{"label_QCD":0,"label_WZ":1,"label_top":0,"label_higgs":0},
     "branches_to_keep" : ["fjet_clus_E","fjet_clus_pt","fjet_clus_phi",
                         "fjet_clus_eta","fjet_clus_deltaphi","fjet_clus_deltaeta",
-                        "fjet_pt","jet_pt","jet_energy","R10TruthLabel_R22v1","fjet_testing_weight_pt","weight"],
+                        "fjet_pt","jet_pt","jet_energy","R10TruthLabel_R22v1",
+                        "fjet_testing_weight_pt","weight","fjet_clus_d0",
+                        "fjet_clus_z0","fjet_clus_d0_uncertainty","fjet_clus_z0_uncertainty",
+                        "subjet_DL1r_pb", "subjet_DL1r_pc", "subjet_DL1r_pu"],
     "out_file_tag":"WZ",
     "metadata_file":"/AtlasDisk/home2/duquebran/particle_transformer/ROOT_PREPARATION/metadata/metadata.json",
     "in_file" :["/AtlasDisk/data1/jet_tagging/june/user.rles.801859.*/*.h5"],
